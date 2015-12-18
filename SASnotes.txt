@@ -1,0 +1,86 @@
+SAS notes
+
+ADM_VEH.ADM_VEH_ENQUIRY
+
+PROC SQL outobs=10;
+ SELECT min(EnquiryDate) as mindate format date9., max(EnquiryDate) as maxdate format date9.
+ FROM ADM_VEH.ADM_VEH_ENQUIRY;
+QUIT; 
+
+01JAN2012 - current
+
+Useful fields
+PolicyStartDate - EnquiryDate = leadTime - need to group (0-6), (7-13), (14-20), (21-27), 28+
+DriversCount - maybe 1 or more than 1
+MainDriverAgeAtEnquiryDate - need bands
+MainDriverLicenceHeldYears - need bands
+MainDriverNoClaimsYears - maybe 0 or 1+
+MainDriverGenderId
+NumberOfCarsInHousehold - maybe 1 or more than 1
+BusinessMilesPerYear - need bands
+PersonalMilesPerYear - need bands
+ClaimsCount - 0 or 1+
+DrivingOffencesCount - 0 or 1+
+
+RequiredDrivingInsuranceCoverId
+
+ClicksCount
+SaleCount
+CheapestAnnualPrice
+PropositionCount
+
+Others we could look into
+OwnerID
+ProtectNoClaims
+RegisteredKeeperId
+
+YoungDriverAgeAtEnquiryDate
+YoungDriverLicenceHeldYears
+YoungDriverGenderId
+
+
+VehicleDaytimeLocationId
+VehicleOvernightLocationId
+VehicleUsageTypeId
+VoluntaryExcessId
+
+
+CarNotBought
+IsDateCarBoughtTrusted
+LatestDrivingOffenceDate
+
+
+Summary stats from wizard
+SalesCount - Mean 0.04; min 0 max 10
+ClicksCount - Mean 0.26, min 0, max 2812
+CheapestnnualPrice - Mean 1020 min 0 max 99999 std dev 1615; 315 611 1164
+PropositionCount - Mean 61 min 0 max 229 std dev 25; 44 65 82
+BusinessMilesPerYear - Mean 284, min 0, max 1000000 - std dev 2460
+PersonalMilesPerYear - Mean 7071, min 0, max 1000000 - std dev 14465; 4000 - 6000 - 9000
+MainDriverAgeAtEnquiryDate - Mean 35, min -963, max 200 - std dev 14; 24 - 32 - 45
+MainDriverLicenseHeldYears - Mean 13, min 0, max 104 : 2 - 9 - 21
+YoungDriverAgeAtEnquiryDate - Mean 32, min -1941, max 171 - std dev 13; 22 - 29 - 40
+DriversCount - Mean 1.57, min 1 max 7 - std dev 0.67; 1 - 1 - 2
+DrivingOffencesCount - Mean 1.26, min 1 max 16 - std dev 0.57; 1 - 1 - 1 CHECK FOR ZEROS?
+ClaimsCount - Mean 1.3, min 1, max 46 - std dev 0.63; 1 - 1 - 1 CHECK FOR ZEROS?
+NumberOfCarsInHousehold - Mean 1.74, min 1 max 255 std dev 0.93; 1 - 1 - 2
+MainDriverNoClaimsYears - Mean 5, min 0, max 41; 2 - 9 - 21
+MainDriverGender - Mean 1.34
+
+
+sql
+select month(EnquiryDate) as month, year(EnquiryDate) as year, 
+		PolicyStartDate - EnquiryDate
+
+
+
+proc export data=ps_test
+   outfile='\\vl2fs001\home\piers.stobbs\test.csv'
+   dbms=csv;
+run;
+
+
+
+
+
+
