@@ -38,8 +38,8 @@ shinyUI(
                 tags$link(rel = 'stylesheet', type = 'text/css', href = 'http://www.moneysupermarket.com/content-management/css/base-framework.css')
               ),
   
-  # First and only Tab
-  tabPanel("",
+  # First Tab
+  tabPanel("Top Line Trends",
            
     # Application title again
     titlePanel(
@@ -88,7 +88,73 @@ shinyUI(
         hr()
         #helpText(htmlOutput("timeHelp")),
     )
-  )
+  ),
+  # Second Tab
+  tabPanel("Explore Changes",
+           
+           # Application title again
+           titlePanel(
+             HTML(
+               '<div id="stats_header">
+               Interactive dashboard to explore performance of car insurance channel at MSM
+               <a href="https://www.moneysupermarket.com/car-insurance/" target="_blank">
+               <img id="stats_logo" align="right" alt="SNAP Logo" src="http://www.googledrive.com/host/0B8-urh68sOqfc0xieXVnNDBTdDQ" />
+               </a>
+               </div>'
+             )
+             ),
+           
+           div("Interactive car insurance dashboard", style = "font-size:140%"),
+           div("Explore trends in customer mix using second graph", style = "font-size:120%"),
+           br(),
+           
+           fluidPage(  
+             fluidRow(
+               column(4,
+                      fluidRow(
+                        column(12,
+                               h5(' Dimension to explore '),
+                               uiOutput("chooseDim"))
+                      )
+               ),
+               column(12,
+                      h5(' Exploring trend drivers '),
+                      plotOutput("dimensionPlot")
+                      
+               )
+             ),
+             br(),
+             hr()
+             #helpText(htmlOutput("timeHelp")),
+           )
+    ) , 
+  # Third Tab
+  tabPanel("Explore Micro Segments",
+           
+           # Application title again
+           titlePanel(
+             HTML(
+               '<div id="stats_header">
+               Interactive dashboard to explore performance of car insurance channel at MSM
+               <a href="https://www.moneysupermarket.com/car-insurance/" target="_blank">
+               </a>
+               </div>'
+             )
+             ),
+           
+           div("Interactive car insurance dashboard", style = "font-size:140%"),
+           div("Explore micro segments", style = "font-size:120%"),
+           br(),
+           
+           fluidPage(  
+             fluidRow(
+               includeHTML("parcor/parcorCar.html")
+               ),
+             br(),
+             hr()
+             #helpText(htmlOutput("timeHelp")),
+           )
+    ) 
 ))
 
 

@@ -70,16 +70,121 @@
   raw[, leadTime:= as.factor(leadTime)]
   raw[, validProps:= as.factor(validProps)]
 
+  #clean up dates - remove any partial months
+  excludeM = '201512'
+  raw = raw[ym!=excludeM, ]
   
   raw$mainAge = factor(raw$mainAge, levels = 
-                       c("0: <17", "1: 17-18", "2: 19-20", "3: 21-22", "4: 23-25", 
-                             "5: 26-30", "6: 31-40", "7: 41-50", "8: 51-60", "9: 61-80", "10: 81+"))
-  
+                         c("0: <17", "1: 17-18", "2: 19-20", "3: 21-22", "4: 23-25", 
+                           "5: 26-30", "6: 31-40", "7: 41-50", "8: 51-60", "9: 61-80", "10: 81+"))
   
   varList = c("mainAge", "licenseHeld", "noClaims", "gender", "drivers", "numCars", 
               "coverType", "persMiles", "numClaims", "numOffences", "leadTime",
               "validProps")
-
+  
+  
+  
+  
+  #deal with props
+  fullList = c('ym', 'month', 'year', 'mainAge', 'licenseHeld', 'noClaims', 'gender', 'drivers', 
+               'numCars', 'coverType', 'persMiles', 'numClaims', 'numOffences', 'leadTime')
+  raw2 = raw[, list(ym, month, year, mainAge, licenseHeld, noClaims, gender, drivers, numCars, 
+                    coverType, persMiles, numClaims, numOffences, leadTime, 
+                    totEnq = sum(totEnquiries), totClickEnq = sum(totClickEnquiries), 
+                    totCl = sum(totClicks), totSaleEnq = sum(totSaleEnquiries), totS = sum(totSales)
+                    ), by = list(ym, month, year, mainAge, licenseHeld, noClaims, gender, drivers, numCars, 
+                                 coverType, persMiles, numClaims, numOffences, leadTime)]
+  setkeyv(raw2, fullList)
+  tmpOK = raw[validProps=='2: okProps', c(fullList, 'totEnquiries'), with=FALSE]
+  setnames(tmpOK, 'totEnquiries', 'okResults')
+  setkeyv(tmpOK, fullList)
+  metricList = c('totEnq', 'totClickEnq','totCl', 'totSaleEnq', 'totS', 'okResults')
+  raw2 = tmpOK[raw2][, c(fullList, metricList), with=FALSE]
+  raw2[ is.na(okResults), okResults := 0]
+  raw2[, c('enqToSale','enqToClick','clickToSale','pctOkResults') := 
+         list(totSaleEnq/totEnq, totClickEnq/totEnq, totSaleEnq/totClickEnq, okResults/totEnq)]
+  raw2[is.na(raw2)] = 0
+  minEnq = 100
+  raw2[, okFlag:=totEnq>=minEnq]
+  
+  
+  microSegSum = raw2[, list(mainAge, licenseHeld, noClaims, gender, drivers, numCars, 
+                    coverType, persMiles, numClaims, numOffences, leadTime, 
+                    totMonths = .N, minEnq = min(totEnq), okMonths = sum(okFlag)), 
+                    by = list(mainAge, licenseHeld, noClaims, gender, drivers, numCars, 
+               coverType, persMiles, numClaims, numOffences, leadTime)]
+  microSegSum[, excludeFlag:=0]
+  
+  microSegSum[substr(mainAge,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(licenseHeld,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(noClaims,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(gender,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(drivers,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(numCars,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(coverType,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(persMiles,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(numClaims,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(numOffences,1,3) == "0: ", excludeFlag:=1]
+  microSegSum[substr(leadTime,1,3) == "0: ", excludeFlag:=1]
+  nrow(microSegSum[ excludeFlag==0, ])
+  
+  setkeyv(microSegSum, c('mainAge', 'licenseHeld', 'noClaims', 'gender', 'drivers', 'numCars', 
+                           'coverType', 'persMiles', 'numClaims', 'numOffences', 'leadTime'))
+  
+  microSegSum[, segId:=seq(1,nrow(microSegSum),1)]
+  
+  #nrow(microSegSum[totMonths > 30 & minEnq > 10 & excludeFlag ==0, ])
+  okSegId = microSegSum[totMonths > 30 & minEnq > 10 & excludeFlag ==0, segId]
+  
+  
+  
+  #join segid back into raw2
+  setkeyv(raw2, c('mainAge', 'licenseHeld', 'noClaims', 'gender', 'drivers', 'numCars', 
+                         'coverType', 'persMiles', 'numClaims', 'numOffences', 'leadTime'))
+  raw2 = raw2[microSegSum][, c('segId', fullList, metricList, 'pctOkResults', 'totMonths', 'okMonths', 'excludeFlag'), with=FALSE]
+  
+  #add in a quarter flag
+  raw2[, qtr:=0]
+  raw2[month %in% c(1,2,3), qtr:=1]
+  raw2[month %in% c(4,5,6), qtr:=2]
+  raw2[month %in% c(7,8,9), qtr:=3]
+  raw2[month %in% c(10,11,12), qtr:=4]
+  
+  #add in yq 
+  raw2[, yq := as.numeric(paste(as.character(raw2[, year]), paste("0",as.character(raw2[, qtr]), sep=""), sep=""))]
+  raw2[, yq:=as.factor(yq)]
+  
+  
+  #condense down to qtr view, taking avg monthlies - remove December
+  rawQ = raw2[, list(yq, segId, totEnq = sum(totEnq), totClickEnq = sum(totClickEnq),
+                     totCl = sum(totCl), totSaleEnq = sum(totSaleEnq), totS = sum(totS), 
+                     okResults = sum(okResults), months=.N), by = list(yq, segId)][, 
+                    list(yq, segId, totEnq, totClickEnq, totCl, totSaleEnq, totS, okResults, months)]
+  
+  setkeyv(rawQ,c('segId', 'yq'))
+  
+  finalQ = rawQ[segId %in% okSegId, list(segId, yq, totEnq, totClickEnq, totCl, totSaleEnq, totS, okResults, months)]
+  
+  finalQ[, 
+         c('avgMonthlyEnq', 'enqToSale','enqToClick', 'clicksPerCLicker', 'clickToSale', 'transPerSale', 'pctOkResults') 
+         := list(totEnq/months, totSaleEnq/totEnq, totSaleEnq/totClickEnq, totCl/totClickEnq, totSaleEnq/totClickEnq, totS/totSaleEnq, okResults/totEnq)]
+  
+  finalQ[, c('totEnq', 'totClickEnq', 'totCl', 'totSaleEnq', 'totS', 'okResults', 'months') :=NULL]
+  
+  #join in segment details
+  setkey(finalQ, segId)
+  setkey(microSegSum, segId)
+  finalQ = microSegSum[finalQ][, c('yq','segId', 'mainAge', 'licenseHeld', 'noClaims', 'gender', 'drivers', 'numCars', 
+                          'coverType', 'persMiles', 'numClaims', 'numOffences', 'leadTime', 
+                          'avgMonthlyEnq', 'enqToSale','enqToClick', 'clicksPerCLicker', 'clickToSale', 'transPerSale', 'pctOkResults'), with=FALSE]
+                      
+  finalVarList = c('mainAge', 'licenseHeld', 'noClaims', 'gender', 'drivers', 'numCars', 
+                   'coverType', 'persMiles', 'numClaims', 'numOffences', 'leadTime')
+  finalMetricsList = c('avgMonthlyEnq', 'enqToSale','enqToClick', 'clicksPerCLicker', 'clickToSale', 'transPerSale', 'pctOkResults')
+    
+  save(finalQ, okSegId, finalVarList, finalMetricsList, file='carParcor.rdata')
+  
+  
   
   
   
@@ -119,6 +224,9 @@
   agg[, clickToSale := totSaleEnq/totCLickEnq]
   agg[, enqToSale := totSaleEnq/totEnq]
   
+  
+  
+  
   #pull out for plotting
   aggPlot = agg[, list(ym, var, type)]
   aggPlot[, volume:= agg[, totEnq]]
@@ -139,6 +247,7 @@
   setnames(overall, c('carIns_ga', 'totEnq', 'totClickers', 'totBuyers') , c('carSessions', 'carEnquries', 'carClickers', 'carBuyers'))
   overallNames = setdiff(colnames(overall), 'ym')
   save(overall, file='topLine.rdata')
+  save(overall, agg, file='carDashboard.rdata')
   #load(file='topLine.rdata')
   
   #create rolling means
@@ -285,6 +394,8 @@
   
   aggPlot2 = aggPlot[, .(ym, type, var, value=volIndex, metric='volumeIndex')]
   aggPlot2 = rbindlist(list(aggPlot2, aggPlot[, .(ym, type, var, value=volShare, metric='volumeShare')]), 
+                       use.names = T, fill = F)
+  aggPlot2 = rbindlist(list(aggPlot2, aggPlot[, .(ym, type, var, value=100*conv1, metric='buyerConversion')]), 
                        use.names = T, fill = F)
   
   typeList = unique(aggPlot[, type])
