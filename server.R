@@ -24,7 +24,8 @@
 ## todo
 ## tidy up and make pretty
 ## remove outliers and put limits on charts
-## allow for different index month
+## allow for different index month- input from front end
+## bug on explore- select multiple inputs gets stuck in loop
 ## make top line inputs reactive
 ##
 ## parcor
@@ -287,6 +288,61 @@ shinyServer(function(input, output, session) {
       write.table(parcorOut[, outCols, with=FALSE], file="parcor/data/carParcorData.csv", sep=",", row.names = F, col.names = T)
       #write.table(parcorOut[sample(1:nrow(parcorOut),100), outCols, with=FALSE], file="parcor/data/carParcorDataSample.csv", sep=",", row.names = F, col.names = T)
       #write.table(parcorData[total>10, ], file="ccScores.csv", sep=",", row.names = F, col.names = T)
+      
+      
+      
+      #### Parcor section 2
+      #clean up
+      final3Q[, c('totMonths', 'minEnq', 'okMonths', 'excludeFlag') :=NULL]  
+      final3Q[ is.nan(transPerSale), transPerSale:=1]
+      final3Q[ is.nan(avgMonthlyEnq), avgMonthlyEnq:=0]
+      final3Q[ is.nan(enqToSale), enqToSale:=0]
+      final3Q[ is.nan(enqToClick), enqToClick:=0]
+      final3Q[ is.nan(clicksPerCLicker), clicksPerCLicker:=0]
+      final3Q[ is.nan(clickToSale), clickToSale:=0]
+      final3Q[ is.nan(pctLessThan5yrs), pctLessThan5yrs:=0]
+      final3Q[ is.nan(pctOneCar), pctOneCar:=0]
+      final3Q[ is.nan(pctLessThan5k), pctLessThan5k:=0]
+      final3Q[ is.nan(pct1plusClaims), pct1plusClaims:=0]
+      final3Q[ is.nan(pct1plusOffences), pct1plusOffences:=0]
+      final3Q[ is.nan(pctLessThan1w), pctLessThan1w:=0]
+      
+      
+      
+      parcorData31 = final3Q[ yq %in% c(parCorQ1), ]
+      parcorData32 = final3Q[ yq %in% c(parCorQ2), ]
+      setkey(parcorData31, segId3)
+      setkey(parcorData32, segId3)
+      parcor3Out = parcorData32[parcorData31]
+      parcor3Out[, 'Ch-LessThan5yrs':= pctLessThan5yrs - i.pctLessThan5yrs, with=FALSE]
+      parcor3Out[, 'Ch-OneCar':= pctOneCar - i.pctOneCar, with=FALSE]
+      parcor3Out[, 'Ch-LessThan5k':= pctLessThan5k - i.pctLessThan5k, with=FALSE]
+      parcor3Out[, 'Ch-1plusClaims':= pct1plusClaims - i.pct1plusClaims, with=FALSE]
+      parcor3Out[, 'Ch-1plusOffences':= pct1plusOffences - i.pct1plusOffences, with=FALSE]
+      parcor3Out[, 'Ch-LessThan1w':= pctLessThan1w - i.pctLessThan1w, with=FALSE]
+      parcor3Out[, 'PctCh-Enq':=avgMonthlyEnq/i.avgMonthlyEnq - 1, with=FALSE]
+      parcor3Out[, 'Ch-enqToSale':= enqToSale - i.enqToSale, with=FALSE]
+      parcor3Out[, 'Ch-enqToClick':= enqToClick - i.enqToClick, with=FALSE]
+      parcor3Out[, 'Ch-ClicksPerClicker':= clicksPerCLicker - i.clicksPerCLicker, with=FALSE]
+      parcor3Out[, 'Ch-clickToSale' := clickToSale - i.clickToSale, with=FALSE]
+      parcor3Out[, 'Ch-okResults' := pctOkResults - i.pctOkResults, with=FALSE]
+      setnames(parcor3Out, finalMetricsList3, paste(parCorQ2,"-",finalMetricsList3, sep=""))
+      parcor3Out[, colnames(parcor3Out)[grep("i\\.", colnames(parcor3Out))]:=NULL]  
+      
+      outCols3 = setdiff(colnames(parcor3Out), c('yq'))
+      outCols3 = outCols3[grep('-transPerSale',outCols3, invert=TRUE)]
+      outMetrics3 = outCols3[grep('-',outCols3)]
+      volMetrics3 = outMetrics3[grep('avgMonthlyEnq',outMetrics3)]
+      pctMetrics3 = setdiff(outMetrics3, volMetrics3)
+      parcor3Out[,(volMetrics3) := round(.SD,0), .SDcols=volMetrics3]
+      parcor3Out[,(pctMetrics3) := round(.SD,4), .SDcols=pctMetrics3]
+      
+      
+      write.table(parcor3Out[, outCols3, with=FALSE], file="parcor/data/carParcorData3.csv", sep=",", row.names = F, col.names = T)
+      #write.table(parcor3Out[sample(1:nrow(parcor3Out),100), outCols3, with=FALSE], file="parcor/data/carParcorDataSample3.csv", sep=",", row.names = F, col.names = T)
+      #write.table(parcorData[total>10, ], file="ccScores.csv", sep=",", row.names = F, col.names = T)
+      
+      
       
       
   }) #end observe

@@ -107,6 +107,7 @@
   minEnq = 100
   raw2[, okFlag:=totEnq>=minEnq]
   
+  raw3 = copy(raw2)
   
   microSegSum = raw2[, list(mainAge, licenseHeld, noClaims, gender, drivers, numCars, 
                     coverType, persMiles, numClaims, numOffences, leadTime, 
@@ -184,6 +185,92 @@
     
   save(finalQ, okSegId, finalVarList, finalMetricsList, file='carParcor.rdata')
   
+  ## additional consolidation
+  ## final required features and measured
+  ## features: yq, mainAge, gender, noclaims, drivers, coverType
+  ## metrics: avg licenseHeld, avg numCars, avg persMiles, avg numClaims, avg numOffences, avg leadTime
+  
+  ## do it again but with additional consolidation
+  
+  raw3 = raw3[, list(enqLessThan5yrs = sum((licenseHeld == "1: 0-4")*totEnq), 
+                     enqOneCar = sum((numCars == "1: 1")*totEnq), 
+                     enqLessThan5k = sum((persMiles== "1: 0-5k")*totEnq), 
+                     enq1plusClaims = sum((numClaims== "2: 1+")*totEnq), 
+                     enq1plusOffences = sum((numOffences== "2: 1+")*totEnq), 
+                     enqLessThan1w = sum((leadTime== "1: 0-6")*totEnq), 
+                       totEnq = sum(totEnq), totClickEnq = sum(totClickEnq), totCl = sum(totCl), 
+                            totSaleEnq = sum(totSaleEnq), totS = sum(totS), okResults = sum(okResults)), 
+                     by = list(ym, month, year, mainAge, gender, noClaims, drivers, coverType)]
+  raw3[, okFlag:=totEnq>=minEnq]
+  
+  microSegSum3 = raw3[, list(totMonths = .N, minEnq = min(totEnq), okMonths = sum(okFlag)), 
+                     by = list(mainAge, gender, noClaims, drivers, coverType)]
+  
+  microSegSum3[, excludeFlag:=0]
+  microSegSum3[substr(mainAge,1,3) == "0: ", excludeFlag:=1]
+  microSegSum3[substr(noClaims,1,3) == "0: ", excludeFlag:=1]
+  microSegSum3[substr(gender,1,3) == "0: ", excludeFlag:=1]
+  microSegSum3[substr(drivers,1,3) == "0: ", excludeFlag:=1]
+  microSegSum3[substr(coverType,1,3) == "0: ", excludeFlag:=1]
+  nrow(microSegSum3[ excludeFlag==0, ])
+  
+  setkeyv(microSegSum3, c('mainAge', 'noClaims', 'gender', 'drivers', 'coverType'))
+          
+  microSegSum3[, segId3:=seq(1,nrow(microSegSum3),1)]
+  
+  #nrow(microSegSum[totMonths > 30 & minEnq > 10 & excludeFlag ==0, ])
+  okSegId3 = microSegSum3[totMonths > 30 & minEnq > 10 & excludeFlag ==0, segId3]
+  
+  #join segid back into raw2
+  setkeyv(raw3, c('mainAge', 'noClaims', 'gender', 'drivers', 'coverType'))
+  raw3 = raw3[microSegSum3]
+  
+  #add in a quarter flag
+  raw3[, qtr:=0]
+  raw3[month %in% c(1,2,3), qtr:=1]
+  raw3[month %in% c(4,5,6), qtr:=2]
+  raw3[month %in% c(7,8,9), qtr:=3]
+  raw3[month %in% c(10,11,12), qtr:=4]
+  
+  #add in yq 
+  raw3[, yq := as.numeric(paste(as.character(raw3[, year]), paste("0",as.character(raw3[, qtr]), sep=""), sep=""))]
+  raw3[, yq:=as.factor(yq)]
+  
+  
+  #condense down to qtr view, taking avg monthlies - remove December
+  raw3Q = raw3[, list(enqLessThan5yrs = sum(enqLessThan5yrs), 
+                      enqOneCar = sum(enqOneCar), 
+                      enqLessThan5k = sum(enqLessThan5k), 
+                      enq1plusClaims = sum(enq1plusClaims), 
+                      enq1plusOffences = sum(enq1plusOffences), 
+                      enqLessThan1w = sum(enqLessThan1w), 
+                      totEnq = sum(totEnq), totClickEnq = sum(totClickEnq),
+                      totCl = sum(totCl), totSaleEnq = sum(totSaleEnq), totS = sum(totS), 
+                      okResults = sum(okResults), months=.N), by = list(yq, segId3)]
+  
+  setkeyv(raw3Q,c('segId3', 'yq'))
+  
+  final3Q = raw3Q[segId3 %in% okSegId3, ] 
+  final3Q[, 
+         c('pctLessThan5yrs', 'pctOneCar' ,'pctLessThan5k', 'pct1plusClaims', 'pct1plusOffences', 'pctLessThan1w' 
+           ,'avgMonthlyEnq', 'enqToSale','enqToClick', 'clicksPerCLicker', 'clickToSale', 'transPerSale', 'pctOkResults') 
+         := list(enqLessThan5yrs/totEnq, enqOneCar/totEnq, enqLessThan5k/totEnq, enq1plusClaims/totEnq, enq1plusOffences/totEnq, enqLessThan1w/totEnq, 
+                 totEnq/months, totSaleEnq/totEnq, totSaleEnq/totClickEnq, totCl/totClickEnq, totSaleEnq/totClickEnq, totS/totSaleEnq, okResults/totEnq)]
+  
+  final3Q[, c('enqLessThan5yrs', 'enqOneCar' ,'enqLessThan5k', 'enq1plusClaims', 'enq1plusOffences', 'enqLessThan1w', 
+              'totEnq', 'totClickEnq', 'totCl', 'totSaleEnq', 'totS', 'okResults', 'months') :=NULL]
+  
+  #join in segment details
+  setkey(final3Q, segId3)
+  setkey(microSegSum3, segId3)
+  final3Q = microSegSum3[final3Q]
+  
+  finalVarList3 = c('mainAge', 'noClaims', 'gender', 'drivers', 'coverType')
+  finalMetricsList3 = c('pctLessThan5yrs', 'pctOneCar' ,'pctLessThan5k', 'pct1plusClaims', 'pct1plusOffences', 'pctLessThan1w' 
+                       ,'avgMonthlyEnq', 'enqToSale','enqToClick', 'clicksPerCLicker', 'clickToSale', 'transPerSale', 'pctOkResults')
+  
+  
+  save(final3Q, okSegId3, finalVarList3, finalMetricsList3, file='carParcor3.rdata')
   
   
   
@@ -235,7 +322,7 @@
   #pull in rev stuff
   #revClean = rev[, list(ym, totalSessions, carIns_ga, carRev)]
   # want to show total market trend, total visitor trend, car channel trend, car enquiry trend, car buyer trend, revenue trend
-  overall = rev[, .(ym, carMarket, totalSessions, carIns_ga, carRev)]
+  overall = rev[, .(ym, aggCarAllKnown, totalSessions, carIns_ga, carRev_eb)]
   overall = overall[ ym!='201512', ]
   # need totenquiries, tot clickers, tot buyers
   overallEnq = raw[, .(totEnq = sum(totEnquiries), totClickers = sum(totClickEnquiries), totBuyers = sum(totSaleEnquiries)), 
@@ -244,7 +331,7 @@
   setkey(overall, ym)
   setkey(overallEnq, ym)
   overall = overall[overallEnq, ]
-  setnames(overall, c('carIns_ga', 'totEnq', 'totClickers', 'totBuyers') , c('carSessions', 'carEnquries', 'carClickers', 'carBuyers'))
+  setnames(overall, c('carIns_ga', 'totEnq', 'totClickers', 'totBuyers', 'aggCarAllKnown', 'carRev_eb') , c('carSessions', 'carEnquries', 'carClickers', 'carBuyers', 'carMarket', 'carRev'))
   overallNames = setdiff(colnames(overall), 'ym')
   save(overall, file='topLine.rdata')
   save(overall, agg, file='carDashboard.rdata')
