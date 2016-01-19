@@ -107,7 +107,10 @@
   minEnq = 100
   raw2[, okFlag:=totEnq>=minEnq]
   
+
+  
   raw3 = copy(raw2)
+  rawAG = copy(raw2)
   
   microSegSum = raw2[, list(mainAge, licenseHeld, noClaims, gender, drivers, numCars, 
                     coverType, persMiles, numClaims, numOffences, leadTime, 
@@ -272,6 +275,98 @@
   
   save(final3Q, okSegId3, finalVarList3, finalMetricsList3, file='carParcor3.rdata')
   
+  
+  ## age gender consolidation
+  ## final required features and measured
+  ## features: yq, mainAge, gender
+  ## metrics: avg licenseHeld, avg numCars, avg persMiles, avg numClaims, avg numOffences, avg leadTime
+  ##          avg noclaims, avg drivers, covertype==1 
+  
+  
+  ## do it again but with additional consolidation
+  rawAG = rawAG[, list(enqZeroNCB = sum((noClaims == "1: 0")*totEnq),
+                       enq1Driver = sum((drivers == "1: 1")*totEnq),
+                       enq1CoverType = sum((coverType == "1")*totEnq),
+                       enqLessThan5yrs = sum((licenseHeld == "1: 0-4")*totEnq), 
+                     enqOneCar = sum((numCars == "1: 1")*totEnq), 
+                     enqLessThan5k = sum((persMiles== "1: 0-5k")*totEnq), 
+                     enq1plusClaims = sum((numClaims== "2: 1+")*totEnq), 
+                     enq1plusOffences = sum((numOffences== "2: 1+")*totEnq), 
+                     enqLessThan1w = sum((leadTime== "1: 0-6")*totEnq), 
+                     totEnq = sum(totEnq), totClickEnq = sum(totClickEnq), totCl = sum(totCl), 
+                     totSaleEnq = sum(totSaleEnq), totS = sum(totS), okResults = sum(okResults)), 
+              by = list(ym, month, year, mainAge, gender)]
+  rawAG[, okFlag:=totEnq>=minEnq]
+  
+  microSegSumAG = rawAG[, list(totMonths = .N, minEnq = min(totEnq), okMonths = sum(okFlag)), 
+                      by = list(mainAge, gender)]
+  
+  microSegSumAG[, excludeFlag:=0]
+  microSegSumAG[substr(mainAge,1,3) == "0: ", excludeFlag:=1]
+  microSegSumAG[substr(gender,1,3) == "0: ", excludeFlag:=1]
+  nrow(microSegSumAG[ excludeFlag==0, ])
+  
+  setkeyv(microSegSumAG, c('mainAge', 'gender'))
+  
+  microSegSumAG[, segIdAG:=seq(1,nrow(microSegSumAG),1)]
+  
+  #nrow(microSegSum[totMonths > 30 & minEnq > 10 & excludeFlag ==0, ])
+  okSegIdAG = microSegSumAG[totMonths > 30 & minEnq > 10 & excludeFlag ==0, segIdAG]
+  
+  #join segid back into raw2
+  setkeyv(rawAG, c('mainAge', 'gender'))
+  rawAG = rawAG[microSegSumAG]
+  
+  #add in a quarter flag
+  rawAG[, qtr:=0]
+  rawAG[month %in% c(1,2,3), qtr:=1]
+  rawAG[month %in% c(4,5,6), qtr:=2]
+  rawAG[month %in% c(7,8,9), qtr:=3]
+  rawAG[month %in% c(10,11,12), qtr:=4]
+  
+  #add in yq 
+  rawAG[, yq := as.numeric(paste(as.character(rawAG[, year]), paste("0",as.character(rawAG[, qtr]), sep=""), sep=""))]
+  rawAG[, yq:=as.factor(yq)]
+  
+  
+  #condense down to qtr view, taking avg monthlies - remove December
+  rawAGQ = rawAG[, list(enqZeroNCB = sum(enqZeroNCB),
+                        enq1Driver = sum(enq1Driver),
+                        enq1CoverType = sum(enq1CoverType),
+                        enqLessThan5yrs = sum(enqLessThan5yrs), 
+                      enqOneCar = sum(enqOneCar), 
+                      enqLessThan5k = sum(enqLessThan5k), 
+                      enq1plusClaims = sum(enq1plusClaims), 
+                      enq1plusOffences = sum(enq1plusOffences), 
+                      enqLessThan1w = sum(enqLessThan1w), 
+                      totEnq = sum(totEnq), totClickEnq = sum(totClickEnq),
+                      totCl = sum(totCl), totSaleEnq = sum(totSaleEnq), totS = sum(totS), 
+                      okResults = sum(okResults), months=.N), by = list(yq, segIdAG)]
+  
+  setkeyv(rawAGQ,c('segIdAG', 'yq'))
+  
+  finalAGQ = rawAGQ[segIdAG %in% okSegIdAG, ] 
+  finalAGQ[, 
+          c('pctZeroNCB','pct1Driver','pct1CoverType','pctLessThan5yrs', 'pctOneCar' ,'pctLessThan5k', 'pct1plusClaims', 'pct1plusOffences', 'pctLessThan1w' 
+            ,'avgMonthlyEnq', 'enqToSale','enqToClick', 'clicksPerCLicker', 'clickToSale', 'transPerSale', 'pctOkResults') 
+          := list(enqZeroNCB/totEnq, enq1Driver/totEnq, enq1CoverType/totEnq, enqLessThan5yrs/totEnq, enqOneCar/totEnq, enqLessThan5k/totEnq, enq1plusClaims/totEnq, enq1plusOffences/totEnq, enqLessThan1w/totEnq, 
+                  totEnq/months, totSaleEnq/totEnq, totSaleEnq/totClickEnq, totCl/totClickEnq, totSaleEnq/totClickEnq, totS/totSaleEnq, okResults/totEnq)]
+  
+  #finalAGQ[, c('enqZeroNCB', 'enq1Driver', 'enq1CoverType', 'enqLessThan5yrs', 'enqOneCar' ,'enqLessThan5k', 'enq1plusClaims', 'enq1plusOffences', 'enqLessThan1w', 
+  #            'totEnq', 'totClickEnq', 'totCl', 'totSaleEnq', 'totS', 'okResults', 'months') :=NULL]
+  
+  #join in segment details
+  setkey(finalAGQ, segIdAG)
+  setkey(microSegSumAG, segIdAG)
+  finalAGQ = microSegSumAG[finalAGQ]
+  
+  #finalVarListAG = c('mainAge', 'gender')
+  #finalMetricsListAG = c('pctZeroNCB', 'pct1Driver', 'pct1CoverType', 'pctLessThan5yrs', 'pctOneCar' ,'pctLessThan5k', 'pct1plusClaims', 'pct1plusOffences', 'pctLessThan1w' 
+  #                      ,'avgMonthlyEnq', 'enqToSale','enqToClick', 'clicksPerCLicker', 'clickToSale', 'transPerSale', 'pctOkResults')
+  
+  
+  #save(finalAGQ, okSegIdAG, finalVarListAG, finalMetricsListAG, file='carParcorAG.rdata')
+  save(finalAGQ, okSegIdAG, file='carParcorAGAll.rdata')
   
   
   

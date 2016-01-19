@@ -34,8 +34,9 @@ shinyUI(
             inverse = TRUE,
             header = 
               tags$head(
-                tags$link(rel = 'stylesheet', type = 'text/css', href = 'http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:400,700'),
-                tags$link(rel = 'stylesheet', type = 'text/css', href = 'http://www.moneysupermarket.com/content-management/css/base-framework.css')
+                tags$link(rel = 'stylesheet', type = 'text/css', href = 'style.css'),
+                tags$link(rel = 'stylesheet', type = 'text/css', href = 'http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz:400,700')
+                #tags$link(rel = 'stylesheet', type = 'text/css', href = 'http://www.moneysupermarket.com/content-management/css/base-framework.css')
               ),
   
   # First Tab
@@ -129,6 +130,51 @@ shinyUI(
            )
     ) , 
   # Third Tab
+  tabPanel("Age/Gender Segments",
+           
+           # Application title again
+           titlePanel(
+             HTML(
+               '<div id="stats_header">
+               Interactive dashboard to explore performance of car insurance channel at MSM
+               <a href="https://www.moneysupermarket.com/car-insurance/" target="_blank">
+               <img id="stats_logo" align="right" alt="SNAP Logo" src="http://www.googledrive.com/host/0B8-urh68sOqfc0xieXVnNDBTdDQ" />
+               </a>
+               </div>'
+             )
+             ),
+           
+           div("Interactive car insurance dashboard", style = "font-size:140%"),
+           div("Explore drivers of change in age/gender segments", style = "font-size:120%"),
+           br(),
+           
+           fluidPage(  
+             fluidRow(
+               column(12,
+                      h5(' Top Level - overall view '),
+                      plotOutput("waterfallPlotA")
+               ),
+               column(12,
+                      h5(' Age/Gender segments - overall view '),
+                      plotOutput("waterfallPlotD")
+                      
+               ),
+               column(12,
+                      h5(' Top Level - change view '),
+                      plotOutput("waterfallPlotAC")
+               ), 
+               column(12,
+                      h5(' Age/Gender segments - change view '),
+                      plotOutput("waterfallPlotDC")
+                      
+               )
+             ),
+             br(),
+             hr()
+             #helpText(htmlOutput("timeHelp")),
+           )
+          ) , 
+  # Fourth Tab
   tabPanel("Explore Micro Segments",
            
            # Application title again
