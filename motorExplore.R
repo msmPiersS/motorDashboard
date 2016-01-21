@@ -417,7 +417,8 @@
   #pull in rev stuff
   #revClean = rev[, list(ym, totalSessions, carIns_ga, carRev)]
   # want to show total market trend, total visitor trend, car channel trend, car enquiry trend, car buyer trend, revenue trend
-  overall = rev[, .(ym, aggCarAllKnown, totalSessions, carIns_ga, carRev_eb)]
+  #overall = rev[, .(ym, aggCarAllKnown, totalSessions, carIns_ga, carRev_eb)]
+  overall = rev[, .(ym, aggCarAllKnown, totalSessions, CarTrafficExForeign, carRev_eb)]
   overall = overall[ ym!='201512', ]
   # need totenquiries, tot clickers, tot buyers
   overallEnq = raw[, .(totEnq = sum(totEnquiries), totClickers = sum(totClickEnquiries), totBuyers = sum(totSaleEnquiries)), 
@@ -426,7 +427,8 @@
   setkey(overall, ym)
   setkey(overallEnq, ym)
   overall = overall[overallEnq, ]
-  setnames(overall, c('carIns_ga', 'totEnq', 'totClickers', 'totBuyers', 'aggCarAllKnown', 'carRev_eb') , c('carSessions', 'carEnquries', 'carClickers', 'carBuyers', 'carMarket', 'carRev'))
+  #setnames(overall, c('carIns_ga', 'totEnq', 'totClickers', 'totBuyers', 'aggCarAllKnown', 'carRev_eb') , c('carSessions', 'carEnquries', 'carClickers', 'carBuyers', 'carMarket', 'carRev'))
+  setnames(overall, c('CarTrafficExForeign', 'totEnq', 'totClickers', 'totBuyers', 'aggCarAllKnown', 'carRev_eb') , c('carSessions', 'carEnquries', 'carClickers', 'carBuyers', 'carMarket', 'carRev'))
   overallNames = setdiff(colnames(overall), 'ym')
   save(overall, file='topLine.rdata')
   save(overall, agg, file='carDashboard.rdata')

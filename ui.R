@@ -83,6 +83,10 @@ shinyUI(
           column(8,
                  h5(' Top Line Trends '),
                  plotOutput("topLinePlot")
+          ),
+          column(8,
+                 h5(' Latest Y/Y rolling average changes '),
+                 plotOutput("trendPlot")
           )
         ),
         br(),
@@ -150,6 +154,14 @@ shinyUI(
            
            fluidPage(  
              fluidRow(
+                column(6,
+                        h5(' Choose quarters to compare - end quarter '),
+                        uiOutput("chooseQ2")
+                ),
+                column(6,
+                       h5(' Choose quarters to compare - start quarter '),
+                       uiOutput("chooseQ1")
+                ),
                column(12,
                       h5(' Top Level - overall view '),
                       plotOutput("waterfallPlotA")
@@ -166,6 +178,15 @@ shinyUI(
                column(12,
                       h5(' Age/Gender segments - change view '),
                       plotOutput("waterfallPlotDC")
+                      
+               ),
+               column(12,
+                      h5(' Top Level - change in mix'),
+                      plotOutput("changePlotA")
+               ), 
+               column(12,
+                      h5(' Age/Gender segments - change in mix '),
+                      plotOutput("changePlotD")
                       
                )
              ),

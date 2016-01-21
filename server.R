@@ -52,7 +52,7 @@
   #library(shiny)
 
   #setwd("C:/Piers/git/r_abm")
-  options(shiny.trace=FALSE) # set to True to debug
+  options(shiny.trace=TRUE) # set to True to debug
   #options(shiny.error=browser) # set error to browser
   options(shiny.maxRequestSize=100*1024^2) # set max input file size to 100MB
 
@@ -62,7 +62,11 @@
   load(file='carParcorAGAll.rdata')
   
   tgtMnth = '201301'
-  excludeMonths = c('201512')
+  excludeMonths = c('201201','201202','201203','201204','201205','201206',
+                    '201207','201208','201209','201210','201211','201212',
+                    #'201301','201302','201303','201304','201305','201306',
+                    #'201307','201308','201309','201310','201311','201312',
+                    '201512')
   parCorQ1 = '201304'
   parCorQ2 = '201504'
   
@@ -112,8 +116,11 @@ shinyServer(function(input, output, session) {
       #print(displayMetricClean())
       overall[, paste0("ravg_", overallNames) := lapply(.SD, rollapply, width = rollM, mean, fill = NA, align ='right'), .SDcols = overallNames]
 
-      overallIdx = 100*overall[, !"ym", with=FALSE] / overall[rep(which(overall[, ym] == '201301'), nrow(overall)), !"ym", with=FALSE]
+      overallIdx = 100*overall[, !"ym", with=FALSE] / overall[rep(which(overall[, ym] == tgtMnth), nrow(overall)), !"ym", with=FALSE]
       overallIdx[, ym := overall[, ym]]
+      #remove excluded months
+      overallIdx = overallIdx[!(ym %in% excludeMonths), ]
+      
       
       #set up for plotting
       overallNamesAll = setdiff(colnames(overallIdx), 'ym')
@@ -131,6 +138,7 @@ shinyServer(function(input, output, session) {
       setkey(overallPlot, variable)
       overallPlot = overallPlot[cc]
       
+      
       output$topLinePlot <- renderPlot({
         p = ggplot(overallPlot, aes(x=ym, y=value, group = variable, colour = colours)) +
           geom_line(data = overallPlot[variable %in% displayMetricClean(), ], size = 0.5) + 
@@ -141,7 +149,26 @@ shinyServer(function(input, output, session) {
         print(p)
       })
       
+      endData = overallPlot[ym == '201511', ]
+      startData = overallPlot[ym == '201411', ]
+      setkey(endData,variable)
+      setkey(startData,variable)
+      trendData = endData[startData]
+      trendData[, change:= value/i.value-1]  
+      trendVarList = unique(trendData[, variable])
+      trendFinalList = trendVarList[grep('ravg', trendVarList)]    
       
+      output$trendPlot <- renderPlot({  
+        tp = ggplot(trendData[variable %in% trendFinalList, ], aes(x=variable, y=change, fill = variable)) + 
+          geom_bar(stat='identity') +
+          geom_hline(yintercept=0) +
+          scale_y_continuous(name = "pct change", label = percent) + 
+          scale_x_discrete(name = "", labels = "") +
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+      
+        print(tp)
+    })  
     #### Explore Dimension section
       #pull in m1 for each series for indexing
       tmp = agg[ym==tgtMnth, .(var, totEnq)]
@@ -256,23 +283,109 @@ shinyServer(function(input, output, session) {
       
     #### waterfall plot section - age and gender
       
-      waterfallData1 = finalAGQ[yq == parCorQ1, .(oldQ = yq, segIdAG, oldAvgMnthEnq = totEnq/months, oldEnqToSale = totSaleEnq/totEnq, oldAvgMnthSaleEnq = totSaleEnq/months)]
+      #get target quarters from input
+      #parCorQ1 = '201404'
+      #parCorQ2 = '201504'
+      qList = as.character(sort(unique(finalAGQ[, yq])))
+      
+      q1InClean <- reactive({
+        if (is.null(input$q1In))
+          qList[length(qList)-4]
+        else
+          input$q1In
+      })
+      q2InClean <- reactive({
+        if (is.null(input$q2In))
+          qList[length(qList)]
+        else
+          input$q2In
+      })
+      
+      
+      #create input selections
+      output$chooseQ1 <- renderUI({
+        
+        # Create the checkboxes and select them all by default
+        selectInput("q1In", "Choose start quarter:",
+                    qList,
+                    selected = q1InClean())
+      })
+      output$chooseQ2 <- renderUI({
+        # Create the checkboxes and select them all by default
+        selectInput("q2In", "Choose end quarter:",
+                    qList,
+                    selected = q2InClean())
+      })
+      
+      #print(input$q1In)
+      #print(input$q2In)
+      
+      parCorQ1 = q1InClean()
+      parCorQ2 = q2InClean()
+      
+      
+      waterfallData1 = finalAGQ[yq == parCorQ1, .(oldQ = yq, segIdAG, 
+                                                  oldAvgMnthEnq = totEnq/months, oldEnqToSale = totSaleEnq/totEnq, oldAvgMnthSaleEnq = totSaleEnq/months,
+                                                  oldpctZeroNCB = pctZeroNCB, oldpct1Driver = pct1Driver, oldpct1CoverType = pct1CoverType, 
+                                                  oldpctLessThan5yrs = pctLessThan5yrs, oldpctOneCar = pctOneCar, oldpctLessThan5k = pctLessThan5k,
+                                                  oldpct1plusClaims = pct1plusClaims, oldpct1plusOffences = pct1plusOffences, oldpctLessThan1w = pctLessThan1w)]
       setkey(waterfallData1, segIdAG)
-      waterfallData2 = finalAGQ[yq == parCorQ2, .(newQ = yq, segIdAG, mainAge, gender, newAvgMnthEnq = totEnq/months, newEnqToSale = totSaleEnq/totEnq, newAvgMnthSaleEnq = totSaleEnq/months)]
+      waterfallData2 = finalAGQ[yq == parCorQ2, .(newQ = yq, segIdAG, mainAge, gender, 
+                                                  newAvgMnthEnq = totEnq/months, newEnqToSale = totSaleEnq/totEnq, newAvgMnthSaleEnq = totSaleEnq/months,
+                                                  newpctZeroNCB = pctZeroNCB, newpct1Driver = pct1Driver, newpct1CoverType = pct1CoverType, 
+                                                  newpctLessThan5yrs = pctLessThan5yrs, newpctOneCar = pctOneCar, newpctLessThan5k = pctLessThan5k,
+                                                  newpct1plusClaims = pct1plusClaims, newpct1plusOffences = pct1plusOffences, newpctLessThan1w = pctLessThan1w)]
+                                                  
       setkey(waterfallData2, segIdAG)
       waterfallData = waterfallData2[waterfallData1]
       tmp1 = waterfallData[, list(mainAge = 'All', 
                            newAvgMnthEnq = sum(newAvgMnthEnq), newAvgMnthSaleEnq = sum(newAvgMnthSaleEnq), 
                            newEnqToSale = sum(newAvgMnthSaleEnq)/sum(newAvgMnthEnq),
                            oldAvgMnthEnq = sum(oldAvgMnthEnq), oldAvgMnthSaleEnq = sum(oldAvgMnthSaleEnq), 
-                           oldEnqToSale = sum(oldAvgMnthSaleEnq)/sum(oldAvgMnthEnq)), 
+                           oldEnqToSale = sum(oldAvgMnthSaleEnq)/sum(oldAvgMnthEnq),
+                           oldpctZeroNCB = sum(oldpctZeroNCB*oldAvgMnthEnq)/sum(oldAvgMnthEnq), 
+                           oldpct1Driver = sum(oldpct1Driver*oldAvgMnthEnq)/sum(oldAvgMnthEnq), 
+                           oldpct1CoverType = sum(oldpct1CoverType*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                           oldpctLessThan5yrs = sum(oldpctLessThan5yrs*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                           oldpctOneCar = sum(oldpctOneCar*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                           oldpctLessThan5k = sum(oldpctLessThan5k*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                           oldpct1plusClaims = sum(oldpct1plusClaims*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                           oldpct1plusOffences = sum(oldpct1plusOffences*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                           oldpctLessThan1w = sum(oldpctLessThan1w*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                           newpctZeroNCB = sum(newpctZeroNCB*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                           newpct1Driver = sum(newpct1Driver*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                           newpct1CoverType = sum(newpct1CoverType*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                           newpctLessThan5yrs = sum(newpctLessThan5yrs*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                           newpctOneCar = sum(newpctOneCar*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                           newpctLessThan5k = sum(newpctLessThan5k*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                           newpct1plusClaims = sum(newpct1plusClaims*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                           newpct1plusOffences = sum(newpct1plusOffences*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                           newpctLessThan1w = sum(newpctLessThan1w*newAvgMnthEnq)/sum(newAvgMnthEnq)),
                     by = list(newQ, oldQ, gender)]
       tmp1[, segIdAG:=seq(97,98,1)]
       tmp2 = waterfallData[, list(segIdAG = 99, mainAge = 'All', gender = 'All',  
                                   newAvgMnthEnq = sum(newAvgMnthEnq), newAvgMnthSaleEnq = sum(newAvgMnthSaleEnq), 
                                   newEnqToSale = sum(newAvgMnthSaleEnq)/sum(newAvgMnthEnq),
                                   oldAvgMnthEnq = sum(oldAvgMnthEnq), oldAvgMnthSaleEnq = sum(oldAvgMnthSaleEnq), 
-                                  oldEnqToSale = sum(oldAvgMnthSaleEnq)/sum(oldAvgMnthEnq)), 
+                                  oldEnqToSale = sum(oldAvgMnthSaleEnq)/sum(oldAvgMnthEnq),
+                                  oldpctZeroNCB = sum(oldpctZeroNCB*oldAvgMnthEnq)/sum(oldAvgMnthEnq), 
+                                  oldpct1Driver = sum(oldpct1Driver*oldAvgMnthEnq)/sum(oldAvgMnthEnq), 
+                                  oldpct1CoverType = sum(oldpct1CoverType*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                                  oldpctLessThan5yrs = sum(oldpctLessThan5yrs*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                                  oldpctOneCar = sum(oldpctOneCar*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                                  oldpctLessThan5k = sum(oldpctLessThan5k*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                                  oldpct1plusClaims = sum(oldpct1plusClaims*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                                  oldpct1plusOffences = sum(oldpct1plusOffences*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                                  oldpctLessThan1w = sum(oldpctLessThan1w*oldAvgMnthEnq)/sum(oldAvgMnthEnq),
+                                  newpctZeroNCB = sum(newpctZeroNCB*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                                  newpct1Driver = sum(newpct1Driver*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                                  newpct1CoverType = sum(newpct1CoverType*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                                  newpctLessThan5yrs = sum(newpctLessThan5yrs*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                                  newpctOneCar = sum(newpctOneCar*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                                  newpctLessThan5k = sum(newpctLessThan5k*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                                  newpct1plusClaims = sum(newpct1plusClaims*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                                  newpct1plusOffences = sum(newpct1plusOffences*newAvgMnthEnq)/sum(newAvgMnthEnq),
+                                  newpctLessThan1w = sum(newpctLessThan1w*newAvgMnthEnq)/sum(newAvgMnthEnq)), 
                            by = list(newQ, oldQ)]
       waterfallData = rbindlist(list(waterfallData, tmp1, tmp2), use.names = TRUE)
       waterfallData[, newSales_sameConv := newAvgMnthEnq * oldEnqToSale]
@@ -422,17 +535,6 @@ shinyServer(function(input, output, session) {
       
       output$waterfallPlotDC <- renderPlot({
         
-#           wDC = ggplot(waterfallPlotC[segIdAG<97, ], aes(fill = dir)) + 
-#             geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
-#                           ymin = end,ymax = start)) +
-#             geom_hline(yintercept=0) +
-#             scale_y_continuous(name = "avg. monthly sales") + 
-#             scale_x_discrete(name = "") +
-#             scale_fill_manual(guide = "none", values = manualColoursC) + 
-#             theme_minimal() +
-#             theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-#             facet_wrap(~ titleLabel, ncol=2)
-#           
           wDC = ggplot(waterfallPlotC[segIdAG<97, ], aes(fill = dir)) + 
             geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
                           ymin = end,ymax = start)) +
@@ -448,88 +550,58 @@ shinyServer(function(input, output, session) {
       })
     
       
-#       #clean up
-#       finalAGQ[, c('totMonths', 'minEnq', 'okMonths', 'excludeFlag') :=NULL] 
-#       finalAGQ[ is.nan(transPerSale), transPerSale:=1]
-#       finalAGQ[ is.nan(avgMonthlyEnq), avgMonthlyEnq:=0]
-#       finalAGQ[ is.nan(enqToSale), enqToSale:=0]
-#       finalAGQ[ is.nan(enqToClick), enqToClick:=0]
-#       finalAGQ[ is.nan(clicksPerCLicker), clicksPerCLicker:=0]
-#       finalAGQ[ is.nan(clickToSale), clickToSale:=0]
-#       finalAGQ[ is.nan(pctZeroNCB), pctZeroNCB:=0]
-#       finalAGQ[ is.nan(pct1Driver), pct1Driver:=0]
-#       finalAGQ[ is.nan(pct1CoverType), pct1CoverType:=0]
-#       finalAGQ[ is.nan(pctLessThan5yrs), pctLessThan5yrs:=0]
-#       finalAGQ[ is.nan(pctOneCar), pctOneCar:=0]
-#       finalAGQ[ is.nan(pctLessThan5k), pctLessThan5k:=0]
-#       finalAGQ[ is.nan(pct1plusClaims), pct1plusClaims:=0]
-#       finalAGQ[ is.nan(pct1plusOffences), pct1plusOffences:=0]
-#       finalAGQ[ is.nan(pctLessThan1w), pctLessThan1w:=0]
-#       
-#       parcorDataAG1 = finalAGQ[ yq %in% c(parCorQ1), ]
-#       parcorDataAG2 = finalAGQ[ yq %in% c(parCorQ2), ]
-#       setkey(parcorDataAG1, segIdAG)
-#       setkey(parcorDataAG2, segIdAG)
-#       parcorAGOut = parcorDataAG2[parcorDataAG1]
-#       parcorAGOut[, 'Ch_avgMonthlyEnq':=avgMonthlyEnq - i.avgMonthlyEnq, with=FALSE]
-#       parcorAGOut[, 'Ch_ZeroNCB':= pctZeroNCB - i.pctZeroNCB, with=FALSE]
-#       parcorAGOut[, 'Ch_1Driver':= pct1Driver - i.pct1Driver, with=FALSE]
-#       parcorAGOut[, 'Ch_1CoverType':= pct1CoverType - i.pct1CoverType, with=FALSE]
-#       parcorAGOut[, 'Ch_enqToSale':= enqToSale - i.enqToSale, with=FALSE]
-#       parcorAGOut[, 'Ch_enqToClick':= enqToClick - i.enqToClick, with=FALSE]
-#       parcorAGOut[, 'Ch_ClicksPerClicker':= clicksPerCLicker - i.clicksPerCLicker, with=FALSE]
-#       parcorAGOut[, 'Ch_clickToSale' := clickToSale - i.clickToSale, with=FALSE]
-#       parcorAGOut[, 'Ch_okResults' := pctOkResults - i.pctOkResults, with=FALSE]
-#       #setnames(parcorAGOut, finalMetricsListAG, paste(parCorQ2,"-",finalMetricsListAG, sep=""))
-#       setnames(parcorAGOut, finalMetricsListAG, paste("tgtQ_",finalMetricsListAG, sep=""))
-#       parcorAGOut[, colnames(parcorAGOut)[grep("i\\.", colnames(parcorAGOut))]:=NULL]  
-#       
-#       outColsAG = setdiff(colnames(parcorAGOut), c('yq'))
-#       outColsAG = outColsAG[grep('_transPerSale',outColsAG, invert=TRUE)]
-#       outMetricsAG = outColsAG[grep('_',outColsAG)]
-#       volMetricsAG = outMetricsAG[grep("avgMonthlyEnq", outMetricsAG)]
-#       pctMetricsAG = setdiff(outMetricsAG, volMetricsAG)
-#       parcorAGOut[,(volMetricsAG) := round(.SD,0), .SDcols=volMetricsAG]
-#       parcorAGOut[,(pctMetricsAG) := round(.SD,4), .SDcols=pctMetricsAG]
-#       
-#       write.table(parcorAGOut[, outColsAG, with=FALSE], file="parcor/data/carParcorDataAG.csv", sep=",", row.names = F, col.names = T)
-#       
-#       AGplot1 = ggplot(data = parcorAGOut, aes(x= gender, y= mainAge, size = tgtQ_avgMonthlyEnq, colour = tgtQ_enqToSale)) + 
-#         geom_point() +
-#         scale_x_discrete(name = "gender") + 
-#         scale_y_discrete(name = "Age of Main Driver") +
-#         scale_size_continuous(guide="none", range = c(5,25)) +
-#         scale_colour_gradient(name = "Enq to Sale Conversion", low="red", high="green", label = percent) +
-#         theme_minimal() +
-#         ggtitle("Performance by Age and Gender - target Q")
-#       
-#       
-#       AGplot2 = ggplot(data = parcorAGOut, aes(x= gender, y= mainAge, size = Ch_avgMonthlyEnq, colour = Ch_enqToSale)) + 
-#         geom_point() +
-#         scale_x_discrete(name = "gender") + 
-#         scale_y_discrete(name = "Age of Main Driver") +
-#         scale_size_continuous(guide="none", range = c(5,25)) +
-#         scale_colour_gradient(name = "Change in Enq to Sale Conversion", low="red", high="green", label = percent) +
-#         theme_minimal() +
-#         ggtitle("Performance by Age and Gender - Change")
-#       
-#       
-#       AGplot3 = ggplot(data = parcorAGOut, aes(x= gender, y= mainAge, fill = Ch_avgMonthlyEnq)) + 
-#         geom_tile() +
-#         scale_x_discrete(name = "gender") + 
-#         scale_y_discrete(name = "Age of Main Driver") +
-#         scale_fill_gradient(name = "Change in Enq to Sale Conversion", low="red", high="green") +
-#         theme_minimal() +
-#         ggtitle("Performance by Age and Gender - Change")
-#       
-#       AGplot4 = ggplot(data = parcorAGOut, aes(x= gender, y= mainAge, fill = Ch_enqToSale)) + 
-#         geom_tile() +
-#         scale_x_discrete(name = "gender") + 
-#         scale_y_discrete(name = "Age of Main Driver") +
-#         scale_fill_gradient(name = "Change in Enq to Sale Conversion", low="red", high="green", label=percent) +
-#         theme_minimal() +
-#         ggtitle("Performance by Age and Gender - Change")
-#       
+     
+      
+    #### graphs of change in characteristics
+      changePlot = waterfallData[, list(segIdAG, mainAge, gender, volImpact, convImpact,
+                                        pctZeroNCBdiff = newpctZeroNCB - oldpctZeroNCB,
+                                        pct1Driverdiff = newpct1Driver - oldpct1Driver,
+                                        pct1CoverTypediff = newpct1CoverType - oldpct1CoverType,
+                                        pctLessThan5yrsdiff = newpctLessThan5yrs - oldpctLessThan5yrs,
+                                        pctOneCardiff = newpctOneCar - oldpctOneCar,
+                                        pctLessThan5kdiff = newpctLessThan5k - oldpctLessThan5k,
+                                        pct1plusClaimsdiff = newpct1plusClaims - oldpct1plusClaims,
+                                        pct1plusOffencesdiff = newpct1plusOffences - oldpct1plusOffences,
+                                        pctLessThan1wdiff = newpctLessThan1w - oldpctLessThan1w
+                                        )]
+      changePlot[, genderLabel:= "Male"]
+      changePlot[gender==2, genderLabel:= "Female"]
+      changePlot[gender=="All", genderLabel:= "All"]
+      changePlot[, titleLabel:= paste(mainAge," - ", genderLabel, sep="")]
+      
+      changeVars = names(changePlot)
+      meltIdsVars = c("segIdAG", "mainAge", "gender", "genderLabel","titleLabel")
+      meltMeasureVars = setdiff(changeVars, meltIdsVars)
+      
+      changePlotFinal = melt(changePlot, id.vars = meltIdsVars, 
+                            measure.vars = meltMeasureVars)
+      
+      
+      
+      output$changePlotA <- renderPlot({    
+        cPA = ggplot(changePlotFinal[segIdAG>=97 & !(variable %in% c('volImpact', 'convImpact')), ], aes(x=variable, y=value, fill = variable)) + 
+          geom_bar(stat='identity') +
+          geom_hline(yintercept=0) +
+          scale_y_continuous(name = "pct difference", label = percent) + 
+          scale_x_discrete(name = "", labels = "") +
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~ titleLabel)
+      
+        print(cPA)
+      })  
+        
+      output$changePlotD <- renderPlot({  
+        cPD = ggplot(changePlotFinal[segIdAG<97 & !(variable %in% c('volImpact', 'convImpact')), ], aes(x=variable, y=value, fill = variable)) + 
+          geom_bar(stat='identity') +
+          geom_hline(yintercept=0) +
+          scale_y_continuous(name = "pct difference", label = percent) + 
+          scale_x_discrete(name = "", labels = "") +
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_grid(genderLabel ~ mainAge)   
+        print(cPD)
+      })
       
     #### Parcor section
       #clean up
@@ -556,6 +628,11 @@ shinyServer(function(input, output, session) {
       
       outCols = setdiff(colnames(parcorOut), c('yq'))
       outCols = outCols[grep('-transPerSale',outCols, invert=TRUE)]
+      outCols = outCols[grep('-enqToClick',outCols, invert=TRUE)]
+      outCols = outCols[grep('-clicksPerCLicker',outCols, invert=TRUE)]
+      outCols = outCols[grep('-clickToSale',outCols, invert=TRUE)]
+      outCols = outCols[grep('-pctOkResults',outCols, invert=TRUE)]
+      
       outMetrics = outCols[grep('-',outCols)]
       volMetrics = outMetrics[1]
       pctMetrics = setdiff(outMetrics, volMetrics)
@@ -567,60 +644,6 @@ shinyServer(function(input, output, session) {
       #write.table(parcorOut[sample(1:nrow(parcorOut),100), outCols, with=FALSE], file="parcor/data/carParcorDataSample.csv", sep=",", row.names = F, col.names = T)
       #write.table(parcorData[total>10, ], file="ccScores.csv", sep=",", row.names = F, col.names = T)
       
-      
-      
-      #### Parcor section 2
-#       #clean up
-#       final3Q[, c('totMonths', 'minEnq', 'okMonths', 'excludeFlag') :=NULL]  
-#       final3Q[ is.nan(transPerSale), transPerSale:=1]
-#       final3Q[ is.nan(avgMonthlyEnq), avgMonthlyEnq:=0]
-#       final3Q[ is.nan(enqToSale), enqToSale:=0]
-#       final3Q[ is.nan(enqToClick), enqToClick:=0]
-#       final3Q[ is.nan(clicksPerCLicker), clicksPerCLicker:=0]
-#       final3Q[ is.nan(clickToSale), clickToSale:=0]
-#       final3Q[ is.nan(pctLessThan5yrs), pctLessThan5yrs:=0]
-#       final3Q[ is.nan(pctOneCar), pctOneCar:=0]
-#       final3Q[ is.nan(pctLessThan5k), pctLessThan5k:=0]
-#       final3Q[ is.nan(pct1plusClaims), pct1plusClaims:=0]
-#       final3Q[ is.nan(pct1plusOffences), pct1plusOffences:=0]
-#       final3Q[ is.nan(pctLessThan1w), pctLessThan1w:=0]
-#       
-#       
-#       
-#       parcorData31 = final3Q[ yq %in% c(parCorQ1), ]
-#       parcorData32 = final3Q[ yq %in% c(parCorQ2), ]
-#       setkey(parcorData31, segId3)
-#       setkey(parcorData32, segId3)
-#       parcor3Out = parcorData32[parcorData31]
-#       parcor3Out[, 'Ch-LessThan5yrs':= pctLessThan5yrs - i.pctLessThan5yrs, with=FALSE]
-#       parcor3Out[, 'Ch-OneCar':= pctOneCar - i.pctOneCar, with=FALSE]
-#       parcor3Out[, 'Ch-LessThan5k':= pctLessThan5k - i.pctLessThan5k, with=FALSE]
-#       parcor3Out[, 'Ch-1plusClaims':= pct1plusClaims - i.pct1plusClaims, with=FALSE]
-#       parcor3Out[, 'Ch-1plusOffences':= pct1plusOffences - i.pct1plusOffences, with=FALSE]
-#       parcor3Out[, 'Ch-LessThan1w':= pctLessThan1w - i.pctLessThan1w, with=FALSE]
-#       parcor3Out[, 'PctCh-Enq':=avgMonthlyEnq/i.avgMonthlyEnq - 1, with=FALSE]
-#       parcor3Out[, 'Ch-enqToSale':= enqToSale - i.enqToSale, with=FALSE]
-#       parcor3Out[, 'Ch-enqToClick':= enqToClick - i.enqToClick, with=FALSE]
-#       parcor3Out[, 'Ch-ClicksPerClicker':= clicksPerCLicker - i.clicksPerCLicker, with=FALSE]
-#       parcor3Out[, 'Ch-clickToSale' := clickToSale - i.clickToSale, with=FALSE]
-#       parcor3Out[, 'Ch-okResults' := pctOkResults - i.pctOkResults, with=FALSE]
-#       setnames(parcor3Out, finalMetricsList3, paste(parCorQ2,"-",finalMetricsList3, sep=""))
-#       parcor3Out[, colnames(parcor3Out)[grep("i\\.", colnames(parcor3Out))]:=NULL]  
-#       
-#       outCols3 = setdiff(colnames(parcor3Out), c('yq'))
-#       outCols3 = outCols3[grep('-transPerSale',outCols3, invert=TRUE)]
-#       outMetrics3 = outCols3[grep('-',outCols3)]
-#       volMetrics3 = outMetrics3[grep('avgMonthlyEnq',outMetrics3)]
-#       pctMetrics3 = setdiff(outMetrics3, volMetrics3)
-#       parcor3Out[,(volMetrics3) := round(.SD,0), .SDcols=volMetrics3]
-#       parcor3Out[,(pctMetrics3) := round(.SD,4), .SDcols=pctMetrics3]
-#       
-#       
-#       write.table(parcor3Out[, outCols3, with=FALSE], file="parcor/data/carParcorData3.csv", sep=",", row.names = F, col.names = T)
-#       #write.table(parcor3Out[sample(1:nrow(parcor3Out),100), outCols3, with=FALSE], file="parcor/data/carParcorDataSample3.csv", sep=",", row.names = F, col.names = T)
-#       #write.table(parcorData[total>10, ], file="ccScores.csv", sep=",", row.names = F, col.names = T)
-#       
-#       
       
       
   }) #end observe
