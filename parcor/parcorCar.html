@@ -29,7 +29,7 @@ We then created aggregates over time across all combinations of these bands, inc
 Curren quarter is 2015Q4 and baseline quarter is 2013Q4</p>
 <p>You can explore further using filters, limiting the micro segments highlighted by <strong> dragging your mouse over ranges of interest</strong> in any of the different dimensions, both descriptive and performance measures ("brushing"). So, if you want to only see the micro segments with highest gains in conversion, drag your mouse over the higher end of the Ch_enqToSale column- this will highlight only those segments falling in that area. You can add mulitple filters like this by dragging your mouse on different columns. <strong> Have an explore!</strong> To reset a given column, removing the filters, just click anywhere outside the selected area in the column.</p>
 <div id="example" class="parcoords"></div>
-<p>The table below shows either the top 10 micro segments by volume (if no filters are selected), or the segments you have selected using the "brush" filters on the parallel coordinate plot above. If you mouse over a row in the table below, the segment is highlighted in the plot above</p>
+<p>The table below shows either the top 50 micro segments by volume (if no filters are selected), or the segments you have selected using the "brush" filters on the parallel coordinate plot above. If you mouse over a row in the table below, the segment is highlighted in the plot above</p>
 <div id="grid"></div>
 
 <br>
@@ -55,7 +55,7 @@ var parcoords = d3.parcoords()("#example")
 
 // load csv file and create the chart
 //d3.csv('data/ccScores.csv', function(data) {
-d3.csv('data/carParcorDataSample.csv', function(data) {
+d3.csv('data/carParcorData.csv', function(data) {
   //console.log(data[0]);
   parcoords
     .data(data)
@@ -66,7 +66,7 @@ d3.csv('data/carParcorDataSample.csv', function(data) {
   // create data table, row hover highlighting
   var grid = d3.divgrid();
   d3.select("#grid")
-    .datum(data.slice(0,10))
+    .datum(data.slice(0,50))
     .call(grid)
     .selectAll(".row")
     .on({
@@ -77,7 +77,7 @@ d3.csv('data/carParcorDataSample.csv', function(data) {
   // update data table on brush event
   parcoords.on("brush", function(d) {
     d3.select("#grid")
-      .datum(d.slice(0,10))
+      .datum(d.slice(0,50))
       .call(grid)
       .selectAll(".row")
       .on({

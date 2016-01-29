@@ -158,6 +158,14 @@ shinyServer(function(input, output, session) {
       trendVarList = unique(trendData[, variable])
       trendFinalList = trendVarList[grep('ravg', trendVarList)]    
       
+      trendData$variable = factor(trendData$variable, levels = c(
+        'carMarket', 'totalSessions', 'carSessions', 
+        'carEnquries', 'carClickers', 'carBuyers', 'carRev',
+        'ravg_carMarket', 'ravg_totalSessions',  'ravg_carSessions', 
+        'ravg_carEnquries', 'ravg_carClickers', 'ravg_carBuyers', 'ravg_carRev')  
+      )
+      
+      
       output$trendPlot <- renderPlot({  
         tp = ggplot(trendData[variable %in% trendFinalList, ], aes(x=variable, y=change, fill = variable)) + 
           geom_bar(stat='identity') +
@@ -280,8 +288,23 @@ shinyServer(function(input, output, session) {
           
           print(pFinal)
       })
+    
+    #### waterfall plot section - general dimensions
+      ## put agg into q format
+      agg[, qtr:=0]
+      agg[as.numeric(substr(agg$ym,5,6)) %in% c(1,2,3), qtr:=1]
+      agg[as.numeric(substr(agg$ym,5,6)) %in% c(4,5,6), qtr:=2]
+      agg[as.numeric(substr(agg$ym,5,6)) %in% c(7,8,9), qtr:=3]
+      agg[as.numeric(substr(agg$ym,5,6)) %in% c(10,11,12), qtr:=4]
       
-    #### waterfall plot section - age and gender
+      #add in yq 
+      agg[, yq := as.numeric(paste(substr(agg$ym,1,4), paste("0",as.character(agg[, qtr]), sep=""), sep=""))]
+      agg[, yq:=as.factor(yq)]
+      
+      aggQ = agg[, list(totEnq = sum(totEnq), totSaleEnq = sum(totSaleEnq)), by = list(yq, type, var)]  
+      aggQ[ ,enqToSale:= totSaleEnq/totEnq]  
+  
+  #### waterfall plot section - age and gender
       
       #get target quarters from input
       #parCorQ1 = '201404'
