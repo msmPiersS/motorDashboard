@@ -51,6 +51,8 @@
   #raw
   raw = fread(paste(dataDir, rawFile, sep=""))
   str(raw)
+  #raw2 = fread(paste(dataDir, "enquiry_agg_20160125.csv", sep=""))
+  #str(raw)
   
   # remove NAs
   raw = raw[!is.na(raw[ ,month]), ]

@@ -67,7 +67,7 @@
                     #'201301','201302','201303','201304','201305','201306',
                     #'201307','201308','201309','201310','201311','201312',
                     '201512')
-  parCorQ1 = '201304'
+  parCorQ1 = '201404'
   parCorQ2 = '201504'
   
 ## end setup
@@ -196,95 +196,96 @@ shinyServer(function(input, output, session) {
       aggPlot[, enqShare:= totEnq/totVol]
       #clean up
       aggPlot[, ym:=as.factor(ym)]
-      aggPlot[ym!=excludeMonths, ]
+      aggPlot[!(ym %in% excludeMonths), ]
       #aggPlot = aggPlot[ym!='201512', ]
       #now have volume index, share and conversion figures to look at
       
       #get target dimension from input
-      tgtDimClean <- reactive({
-        if (is.null(input$dimensions))
-          typeList[2]
-        else
-          input$dimensions
-      })
+#       tgtDimClean <- reactive({
+#         if (is.null(input$dimensions))
+#           typeList[2]
+#         else
+#           input$dimensions
+#       })
       
-      #create input selections
-      typeList = unique(aggPlot[, type])
-      output$chooseDim <- renderUI({
-          
-          # Create the checkboxes and select them all by default
-          checkboxGroupInput("dimensions", "Choose Dimensions", 
-                             choices  = typeList,
-                             selected = tgtDimClean(), 
-                             inline = TRUE,
-                             width = '100%')
-      })
-      
+#       #create input selections
+#       typeList = unique(aggPlot[, type])
+#       output$chooseDim <- renderUI({
+#           
+#           # Create the checkboxes and select them all by default
+#           checkboxGroupInput("dimensions", "Choose Dimensions", 
+#                              choices  = typeList,
+#                              selected = tgtDimClean(), 
+#                              inline = TRUE,
+#                              width = '100%')
+#       })
+#       
       ##dimension plots  
       #tgtType = "drivers"
       #tgtType = tgtDimClean()
-      tgtType = input$dimensions
+      #tgtType = input$dimensions
       
       output$dimensionPlot <- renderPlot({
           
           #market and sales
-          p1 = ggplot(overallPlot[ variable %in% c('ravg_carMarket', 'ravg_carRev'), ], aes(x=ym, y=value, group = variable, colour = variable)) +
-                  geom_line(data = overallPlot[variable %in% c('ravg_carMarket', 'ravg_carRev'), ], size = 0.5) + 
+          p1 = ggplot(overallPlot[ variable %in% c('ravg_carMarket', 'ravg_carEnquries', 'ravg_carBuyers'), ], aes(x=ym, y=value, group = variable, colour = variable)) +
+                  #geom_line(data = overallPlot[variable %in% c('ravg_carMarket', 'ravg_carRev'), ], size = 0.5) + 
+                  geom_line(size = 0.5) + 
                   scale_y_continuous(name = "index", breaks = c(80,90,100,110,120)) + 
                   scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
                   theme_minimal() +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
                   ggtitle(paste("Overall Trend: base = ", tgtMnth, sep=""))
               
-          #volume
-          p2 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=enqIndex, group = var, colour = var)) +
-                  geom_line() +
-                  scale_y_continuous(name = "enquiry index", breaks = c(seq(0,200,10))) + 
-                  scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
-                  theme_minimal() +
-                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-                  ggtitle(paste("Volume Index trend: base = ", tgtMnth, sep=""))
-                
-          #share
-          p3 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=enqShare, group = var, colour = var)) +
-                  geom_line() +
-                  scale_y_continuous(name = "enquiry share", breaks = c(seq(0,1,0.05)), labels = percent) + 
-                  scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
-                  theme_minimal() +
-                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-                  ggtitle("Volume Share trend")
-                
-          
-          #overall conversion
-          p4 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=enqToSale, group = var, colour = var)) +
-                  geom_line() +
-                  scale_y_continuous(name = "enquiry to sale", breaks = c(seq(0,0.2,0.01)), labels = percent) + 
-                  scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
-                  theme_minimal() +
-                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-                  ggtitle("Enquiry to Sale Conversion trend")
-                
-          
-          #enquiry to click
-          p5 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=enqToClick, group = var, colour = var)) +
-                  geom_line() +
-                  scale_y_continuous(name = "enquiry to click", breaks = c(seq(0,0.2,0.01)), labels = percent) + 
-                  scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
-                  theme_minimal() +
-                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-                  ggtitle("Enquiry to Click Conversion trend")
-                
-          #click to sale
-          p6 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=clickToSale, group = var, colour = var)) +
-                geom_line() +
-                scale_y_continuous(name = "click to sale", breaks = c(seq(0,0.2,0.01)), labels = percent) + 
-                scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
-                theme_minimal() +
-                theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
-                ggtitle("Click to Sale Conversion trend")
+#           #volume
+#           p2 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=enqIndex, group = var, colour = var)) +
+#                   geom_line() +
+#                   scale_y_continuous(name = "enquiry index", breaks = c(seq(0,200,10))) + 
+#                   scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
+#                   theme_minimal() +
+#                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#                   ggtitle(paste("Volume Index trend: base = ", tgtMnth, sep=""))
+#                 
+#           #share
+#           p3 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=enqShare, group = var, colour = var)) +
+#                   geom_line() +
+#                   scale_y_continuous(name = "enquiry share", breaks = c(seq(0,1,0.05)), labels = percent) + 
+#                   scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
+#                   theme_minimal() +
+#                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#                   ggtitle("Volume Share trend")
+#                 
+#           
+#           #overall conversion
+#           p4 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=enqToSale, group = var, colour = var)) +
+#                   geom_line() +
+#                   scale_y_continuous(name = "enquiry to sale", breaks = c(seq(0,0.2,0.01)), labels = percent) + 
+#                   scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
+#                   theme_minimal() +
+#                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#                   ggtitle("Enquiry to Sale Conversion trend")
+#                 
+#           
+#           #enquiry to click
+#           p5 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=enqToClick, group = var, colour = var)) +
+#                   geom_line() +
+#                   scale_y_continuous(name = "enquiry to click", breaks = c(seq(0,0.2,0.01)), labels = percent) + 
+#                   scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
+#                   theme_minimal() +
+#                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#                   ggtitle("Enquiry to Click Conversion trend")
+#                 
+#           #click to sale
+#           p6 = ggplot(aggPlot[type==tgtType, ], aes(x=ym, y=clickToSale, group = var, colour = var)) +
+#                 geom_line() +
+#                 scale_y_continuous(name = "click to sale", breaks = c(seq(0,0.2,0.01)), labels = percent) + 
+#                 scale_x_discrete(name = "month", breaks = c(overallMonths[seq(1,length(overallMonths),4)])) +
+#                 theme_minimal() +
+#                 theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+#                 ggtitle("Click to Sale Conversion trend")
               
-          pFinal = grid.arrange(p1,p2,p3,p4,p5,p6)
-          
+          #pFinal = grid.arrange(p1,p2,p3,p4,p5,p6)
+          pFinal = p1
           
           print(pFinal)
       })
@@ -301,9 +302,326 @@ shinyServer(function(input, output, session) {
       agg[, yq := as.numeric(paste(substr(agg$ym,1,4), paste("0",as.character(agg[, qtr]), sep=""), sep=""))]
       agg[, yq:=as.factor(yq)]
       
-      aggQ = agg[, list(totEnq = sum(totEnq), totSaleEnq = sum(totSaleEnq)), by = list(yq, type, var)]  
+      aggQ = agg[, list(totEnq = sum(totEnq), totSaleEnq = sum(totSaleEnq), months = .N), by = list(yq, type, var)]  
       aggQ[ ,enqToSale:= totSaleEnq/totEnq]  
-  
+      waterfallDim1 = aggQ[yq == parCorQ1, .(oldQ = yq, type, var,  
+                                                  oldAvgMnthEnq = totEnq/months, oldEnqToSale = totSaleEnq/totEnq, oldAvgMnthSaleEnq = totSaleEnq/months)]
+      setkeyv(waterfallDim1, c('type', 'var'))
+      
+      waterfallDim2 = aggQ[yq == parCorQ2, .(newQ = yq, type, var, 
+                                                  newAvgMnthEnq = totEnq/months, newEnqToSale = totSaleEnq/totEnq, newAvgMnthSaleEnq = totSaleEnq/months)]
+      
+      setkeyv(waterfallDim2, c('type', 'var'))
+      waterfallDim = waterfallDim2[waterfallDim1]
+      waterfallDim[, newSales_sameConv := newAvgMnthEnq * oldEnqToSale]
+      waterfallDim[, volImpact := newSales_sameConv - oldAvgMnthSaleEnq]
+      waterfallDim[, convImpact := newAvgMnthSaleEnq - newSales_sameConv]
+      waterfallDim[, change := newAvgMnthSaleEnq - oldAvgMnthSaleEnq]
+      
+      testDim = data.table(dim = waterfallDim[, type], var = waterfallDim[, var], id = 1)
+      testDim[, desc:='Start Q']
+      testDim[, type:='orgSales']
+      testDim[, start:=0]
+      testDim[, end:=waterfallDim[, oldAvgMnthSaleEnq]]
+      testDim[, amount:=waterfallDim[, oldAvgMnthSaleEnq]]
+      
+      testDim2 = data.table(dim = waterfallDim[, type], var = waterfallDim[, var], id = 2)
+      testDim2[, desc:='Vol. Impact']
+      testDim2[, type:='volIMpact']
+      testDim2[, start:=waterfallDim[, oldAvgMnthSaleEnq]]
+      testDim2[, end:=waterfallDim[, newSales_sameConv]]
+      testDim2[, amount:=waterfallDim[, volImpact]]
+      
+      testDim3 = data.table(dim = waterfallDim[, type], var = waterfallDim[, var], id = 3)
+      testDim3[, desc:='Conv. Impact']
+      testDim3[, type:='convIMpact']
+      testDim3[, start:=waterfallDim[, newSales_sameConv]]
+      testDim3[, end:=waterfallDim[, newAvgMnthSaleEnq]]
+      testDim3[, amount:=waterfallDim[, convImpact]]
+      
+      testDim4 = data.table(dim = waterfallDim[, type], var = waterfallDim[, var], id = 4)
+      testDim4[, desc:='End Q']
+      testDim4[, type:='newSale']
+      testDim4[, start:=waterfallDim[, 0]]
+      testDim4[, end:=waterfallDim[, newAvgMnthSaleEnq]]
+      testDim4[, amount:=waterfallDim[, newAvgMnthSaleEnq]]
+      
+      waterfallDimPlot = rbindlist(list(testDim,testDim2,testDim3,testDim4), use.names = TRUE)
+      waterfallDimPlot[, dir:= 'blue']
+      waterfallDimPlot[id %in% c(2,3) & amount<0, dir:= 'red']
+      waterfallDimPlot[id %in% c(2,3) & amount>=0, dir:= 'green']
+      #waterfallDimPlot[, genderLabel:= "Male"]
+      #waterfallDimPlot[gender==2, genderLabel:= "Female"]
+      #waterfallDimPlot[gender=="All", genderLabel:= "All"]
+      waterfallDimPlot[, titleLabel:= var]
+      
+      setkey(waterfallDimPlot, dim, var, id)
+      #waterfallPlot[, desc:=as.factor(desc)]
+      #waterfallPlot[, type:=as.factor(type)]
+      waterfallDimPlot$dir = factor(waterfallDimPlot$dir, c("blue", "red", "green"))
+      #manualColours = c("#9999CC", "#CC6666", "#66CC99") 
+      manualColoursDim = c("#4532ED", "#DB1A47", "#288C04") 
+      
+      ##waterfall plots  
+      descLabelsDim = factor(waterfallDimPlot[titleLabel=='coverType--1' , desc], levels = waterfallDimPlot[titleLabel=='coverType--1' , desc])
+      waterfallDimPlot$desc = factor(waterfallDimPlot$desc, levels = waterfallDimPlot[titleLabel=='coverType--1' , desc])
+      waterfallDimPlot$titleLabel = factor(waterfallDimPlot$titleLabel, levels = waterfallDimPlot[id==1, titleLabel])
+      
+      output$waterfallPlotDimD <- renderPlot({
+        
+        wDimD = ggplot(waterfallDimPlot, aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "", breaks = levels(descLabelsDim)) +
+          scale_fill_manual(guide = "none", values = manualColoursDim) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap( ~ var)
+        print(wDimD)
+      })
+      
+      
+      #do this based on changes rather than overall
+      
+      testDimC = data.table(dim = waterfallDim[, type], var = waterfallDim[, var], id = 1)
+      testDimC[, desc:='Vol. Impact']
+      testDimC[, type:='volIMpact']
+      testDimC[, start:=0]
+      testDimC[, end:=waterfallDim[, volImpact]]
+      testDimC[, amount:=waterfallDim[, volImpact]]
+      
+      test2DimC = data.table(dim = waterfallDim[, type], var = waterfallDim[, var], id = 2)
+      test2DimC[, desc:='Conv. Impact']
+      test2DimC[, type:='convIMpact']
+      test2DimC[, start:=waterfallDim[, volImpact]]
+      test2DimC[, end:=waterfallDim[, change]]
+      test2DimC[, amount:=waterfallDim[, convImpact]]
+      
+      test3DimC = data.table(dim = waterfallDim[, type], var = waterfallDim[, var], id = 3)
+      test3DimC[, desc:='Sales Change']
+      test3DimC[, type:='salesChange']
+      test3DimC[, start:=0]
+      test3DimC[, end:=waterfallDim[, change]]
+      test3DimC[, amount:=waterfallDim[, change]]
+      
+      waterfallDimPlotC = rbindlist(list(testDimC,test2DimC,test3DimC), use.names = TRUE)
+      waterfallDimPlotC[, dir:= 'blue']
+      waterfallDimPlotC[amount<0, dir:= 'red']
+      waterfallDimPlotC[amount>=0, dir:= 'green']
+      #waterfallDimPlotC[, genderLabel:= "Male"]
+      #waterfallDimPlotC[gender==2, genderLabel:= "Female"]
+      #waterfallDimPlotC[gender=="All", genderLabel:= "All"]
+      waterfallDimPlotC[, titleLabel:= var]
+      
+      setkey(waterfallDimPlotC, dim, var, id)
+      #waterfallPlot[, desc:=as.factor(desc)]
+      #waterfallPlot[, type:=as.factor(type)]
+      waterfallDimPlotC$dir = factor(waterfallDimPlotC$dir, c("blue", "red", "green"))
+      #manualColours = c("#9999CC", "#CC6666", "#66CC99") 
+      #manualColoursC = c("#4532ED", "#DB1A47", "#288C04") 
+      
+      manualColoursDimC = c("#DB1A47", "#288C04") 
+      
+      ##waterfall plots  
+      #descLabels = factor(waterfallPlot[segIdAG==99, desc], levels = waterfallPlot[segIdAG==99, desc])
+      waterfallDimPlotC$desc = factor(waterfallDimPlotC$desc, levels = waterfallDimPlotC[var=='coverType--1', desc])
+      waterfallDimPlotC$titleLabel = factor(waterfallDimPlotC$titleLabel, levels = waterfallDimPlotC[id==1, titleLabel])
+      
+      dimList = unique(waterfallDimPlotC[, dim])
+      
+      output$waterfallPlotDimDC1 <- renderPlot({
+        
+        wDDimC1 = ggplot(waterfallDimPlotC[dim == dimList[1], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC1)
+      })
+      
+      
+      output$waterfallPlotDimDC2 <- renderPlot({
+        
+        wDDimC2 = ggplot(waterfallDimPlotC[dim == dimList[2], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC2)
+      })
+      
+      output$waterfallPlotDimDC3 <- renderPlot({
+        
+        wDDimC3 = ggplot(waterfallDimPlotC[dim == dimList[3], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC3)
+      })
+      
+      
+      output$waterfallPlotDimDC4 <- renderPlot({
+        
+        wDDimC4 = ggplot(waterfallDimPlotC[dim == dimList[4], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC4)
+      })
+      
+      output$waterfallPlotDimDC5 <- renderPlot({
+        
+        wDDimC5 = ggplot(waterfallDimPlotC[dim == dimList[5], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC5)
+      })
+      
+      
+      output$waterfallPlotDimDC6 <- renderPlot({
+        
+        wDDimC6 = ggplot(waterfallDimPlotC[dim == dimList[6], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC6)
+      })
+      
+      output$waterfallPlotDimDC7 <- renderPlot({
+        
+        wDDimC7 = ggplot(waterfallDimPlotC[dim == dimList[7], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC7)
+      })
+      
+      output$waterfallPlotDimDC8 <- renderPlot({
+        
+        wDDimC8 = ggplot(waterfallDimPlotC[dim == dimList[8], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC8)
+      })
+      
+      
+      output$waterfallPlotDimDC9 <- renderPlot({
+        
+        wDDimC9 = ggplot(waterfallDimPlotC[dim == dimList[9], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC9)
+      })
+      
+      output$waterfallPlotDimDC10 <- renderPlot({
+        
+        wDDimC10 = ggplot(waterfallDimPlotC[dim == dimList[10], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC10)
+      })
+      
+      output$waterfallPlotDimDC11 <- renderPlot({
+        
+        wDDimC11 = ggplot(waterfallDimPlotC[dim == dimList[11], ], aes(fill = dir)) + 
+          geom_rect(aes(x = desc, xmin = id - 0.45, xmax = id + 0.45, 
+                        ymin = end,ymax = start)) +
+          geom_hline(yintercept=0) +
+          #scale_y_continuous(name = "avg. monthly sales", limits = c(-7500,0)) + 
+          scale_y_continuous(name = "avg. monthly sales") + 
+          scale_x_discrete(name = "") +
+          scale_fill_manual(guide = "none", values = manualColoursDimC) + 
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+          facet_wrap(~titleLabel)
+        
+        print(wDDimC11)
+      })
+      
+      
   #### waterfall plot section - age and gender
       
       #get target quarters from input
@@ -346,6 +664,9 @@ shinyServer(function(input, output, session) {
       parCorQ1 = q1InClean()
       parCorQ2 = q2InClean()
       
+      output$dimTitle = renderText({
+        paste("Average Monthly Sales Impact: ",parCorQ1," to ", parCorQ2, " - volume impact vs conversion impact across various dimensions", sep="")
+      })
       
       waterfallData1 = finalAGQ[yq == parCorQ1, .(oldQ = yq, segIdAG, 
                                                   oldAvgMnthEnq = totEnq/months, oldEnqToSale = totSaleEnq/totEnq, oldAvgMnthSaleEnq = totSaleEnq/months,
@@ -461,7 +782,7 @@ shinyServer(function(input, output, session) {
       manualColours = c("#4532ED", "#DB1A47", "#288C04") 
       
       ##waterfall plots  
-      #descLabels = factor(waterfallPlot[segIdAG==99, desc], levels = waterfallPlot[segIdAG==99, desc])
+      descLabels = factor(waterfallPlot[segIdAG==99, desc], levels = waterfallPlot[segIdAG==99, desc])
       waterfallPlot$desc = factor(waterfallPlot$desc, levels = waterfallPlot[segIdAG==99, desc])
       waterfallPlot$titleLabel = factor(waterfallPlot$titleLabel, levels = waterfallPlot[id==1, titleLabel])
       

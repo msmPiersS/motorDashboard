@@ -115,17 +115,29 @@ shinyUI(
            
            fluidPage(  
              fluidRow(
-               column(4,
-                      fluidRow(
-                        column(12,
-                               h5(' Dimension to explore '),
-                               uiOutput("chooseDim"))
-                      )
-               ),
+#                column(4,
+#                       fluidRow(
+#                         column(12,
+#                                h5(' Dimension to explore '),
+#                                uiOutput("chooseDim"))
+#                       )
+#                ),
                column(12,
+                      h5(' Top line trends '),
+                      plotOutput("dimensionPlot"),
                       h5(' Exploring trend drivers '),
-                      plotOutput("dimensionPlot")
-                      
+                      h4(textOutput("dimTitle")),
+                      plotOutput("waterfallPlotDimDC1"),
+                      plotOutput("waterfallPlotDimDC2"),
+                      plotOutput("waterfallPlotDimDC3"),
+                      plotOutput("waterfallPlotDimDC4"),
+                      plotOutput("waterfallPlotDimDC5"),
+                      plotOutput("waterfallPlotDimDC6"),
+                      plotOutput("waterfallPlotDimDC7"),
+                      plotOutput("waterfallPlotDimDC8"),
+                      plotOutput("waterfallPlotDimDC9"),
+                      plotOutput("waterfallPlotDimDC10"),
+                      plotOutput("waterfallPlotDimDC11")
                )
              ),
              br(),
