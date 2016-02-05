@@ -162,7 +162,8 @@ shinyUI(
            
            div("Interactive car insurance dashboard", style = "font-size:140%"),
            div("Explore drivers of change in age/gender segments", style = "font-size:120%"),
-           br(),
+           h5(a("Click here to explore micro segments", href="http://datablog.moneysupermarket.com/content/parcorMotor/parcorCar.html", target="_blank")),
+	   br(),
            
            fluidPage(  
              fluidRow(
@@ -206,34 +207,34 @@ shinyUI(
              hr()
              #helpText(htmlOutput("timeHelp")),
            )
-          ) , 
-  # Fourth Tab
-  tabPanel("Explore Micro Segments",
-           
-           # Application title again
-           titlePanel(
-             HTML(
-               '<div id="stats_header">
-               Interactive dashboard to explore performance of car insurance channel at MSM
-               <a href="https://www.moneysupermarket.com/car-insurance/" target="_blank">
-               </a>
-               </div>'
-             )
-             ),
-           
-           div("Interactive car insurance dashboard", style = "font-size:140%"),
-           div("Explore micro segments", style = "font-size:120%"),
-           br(),
-           
-           fluidPage(  
-             fluidRow(
-               includeHTML("parcor/parcorCar.html")
-               ),
-             br(),
-             hr()
-             #helpText(htmlOutput("timeHelp")),
-           )
-    ) 
+          )  
+#  # Fourth Tab
+#  tabPanel("Explore Micro Segments",
+#           
+#           # Application title again
+#           titlePanel(
+#             HTML(
+#               '<div id="stats_header">
+#               Interactive dashboard to explore performance of car insurance channel at MSM
+#               <a href="https://www.moneysupermarket.com/car-insurance/" target="_blank">
+#               </a>
+#               </div>'
+#             )
+#             ),
+#           
+#           div("Interactive car insurance dashboard", style = "font-size:140%"),
+#           div("Explore micro segments", style = "font-size:120%"),
+#           br(),
+#           
+#           fluidPage(  
+#             fluidRow(
+#               includeHTML("http://10.74.5.89/content/parcorMotor/parcorCar.html")
+#               ),
+#             br(),
+#             hr()
+#             #helpText(htmlOutput("timeHelp")),
+#           )
+#    ) 
 ))
 
 

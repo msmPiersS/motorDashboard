@@ -51,7 +51,7 @@
   #library(RColorBrewer)
   #library(shiny)
 
-  #setwd("C:/Piers/git/r_abm")
+  #setwd("/var/www/ShinyApps/motorDashboard/")
   options(shiny.trace=TRUE) # set to True to debug
   #options(shiny.error=browser) # set error to browser
   options(shiny.maxRequestSize=100*1024^2) # set max input file size to 100MB
@@ -770,7 +770,7 @@ shinyServer(function(input, output, session) {
       waterfallPlot[id %in% c(2,3) & amount<0, dir:= 'red']
       waterfallPlot[id %in% c(2,3) & amount>=0, dir:= 'green']
       waterfallPlot[, genderLabel:= "Male"]
-      waterfallPlot[gender==2, genderLabel:= "Female"]
+      waterfallPlot[gender=="2", genderLabel:= "Female"]
       waterfallPlot[gender=="All", genderLabel:= "All"]
       waterfallPlot[, titleLabel:= paste(mainAge," - ", genderLabel, sep="")]
       
@@ -843,7 +843,7 @@ shinyServer(function(input, output, session) {
       waterfallPlotC[amount<0, dir:= 'red']
       waterfallPlotC[amount>=0, dir:= 'green']
       waterfallPlotC[, genderLabel:= "Male"]
-      waterfallPlotC[gender==2, genderLabel:= "Female"]
+      waterfallPlotC[gender=="2", genderLabel:= "Female"]
       waterfallPlotC[gender=="All", genderLabel:= "All"]
       waterfallPlotC[, titleLabel:= paste(mainAge," - ", genderLabel, sep="")]
       
@@ -909,7 +909,7 @@ shinyServer(function(input, output, session) {
                                         pctLessThan1wdiff = newpctLessThan1w - oldpctLessThan1w
                                         )]
       changePlot[, genderLabel:= "Male"]
-      changePlot[gender==2, genderLabel:= "Female"]
+      changePlot[gender=="2", genderLabel:= "Female"]
       changePlot[gender=="All", genderLabel:= "All"]
       changePlot[, titleLabel:= paste(mainAge," - ", genderLabel, sep="")]
       
@@ -984,7 +984,7 @@ shinyServer(function(input, output, session) {
       parcorOut[,(pctMetrics) := round(.SD,4), .SDcols=pctMetrics]
       
       
-      write.table(parcorOut[, outCols, with=FALSE], file="parcor/data/carParcorData.csv", sep=",", row.names = F, col.names = T)
+      #write.table(parcorOut[, outCols, with=FALSE], file="parcor/data/carParcorData.csv", sep=",", row.names = F, col.names = T)
       #write.table(parcorOut[sample(1:nrow(parcorOut),100), outCols, with=FALSE], file="parcor/data/carParcorDataSample.csv", sep=",", row.names = F, col.names = T)
       #write.table(parcorData[total>10, ], file="ccScores.csv", sep=",", row.names = F, col.names = T)
       
